@@ -52,3 +52,4 @@ So, whether you're a beginner looking to start your journey in web development o
 
 ![Azeem's github stats](https://github-readme-stats.vercel.app/api?username=mrmuhammadazeemrao&show_icons=true&hide_border=true)
 
+[![An image of @mrmuhammadazeemrao's Holopin badges, which is a link to view their full Holopin profile](https://holopin.me/mrmuhammadazeemrao)](https://holopin.io/@mrmuhammadazeemrao)
