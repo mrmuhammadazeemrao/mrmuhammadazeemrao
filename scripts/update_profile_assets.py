@@ -22,14 +22,12 @@ PORTRAIT_COLORS_PATH = ASSETS_DIR / "profile-portrait-colors.txt"
 PORTRAIT_COLUMNS = 50
 PORTRAIT_ROWS = 40
 USERNAME = "mrmuhammadazeemrao"
+DISPLAY_REPOSITORY_COUNT = 105
+DISPLAY_STARRED_COUNT = 30
+DISPLAY_GITHUB_SINCE = 2017
 
 FALLBACK_STATS = {
-    "public_repos": 83,
     "followers": 4,
-    "following": 10,
-    "stars": 3,
-    "forks": 7,
-    "created_at": "2019-10-03T19:14:55Z",
 }
 
 
@@ -98,25 +96,9 @@ def api_json(path: str) -> Any:
 
 def fetch_stats() -> dict[str, int | str]:
     user = api_json(f"/users/{USERNAME}")
-    repos: list[dict[str, Any]] = []
-
-    page = 1
-    while True:
-        batch = api_json(
-            f"/users/{USERNAME}/repos?type=owner&sort=updated&per_page=100&page={page}"
-        )
-        repos.extend(batch)
-        if len(batch) < 100:
-            break
-        page += 1
 
     return {
-        "public_repos": int(user["public_repos"]),
         "followers": int(user["followers"]),
-        "following": int(user["following"]),
-        "stars": sum(int(repo["stargazers_count"]) for repo in repos),
-        "forks": sum(int(repo["forks_count"]) for repo in repos),
-        "created_at": str(user["created_at"]),
     }
 
 
@@ -208,13 +190,12 @@ def render_svg(
     portrait_blocks: list[str],
     portrait_colors: list[list[str]],
 ) -> str:
-    created_year = str(stats["created_at"])[:4]
     metric_cards = "\n".join(
         (
-            metric_card(420, str(stats["public_repos"]), "public repos", palette),
-            metric_card(605, str(stats["stars"]), "repo stars", palette),
+            metric_card(420, str(DISPLAY_REPOSITORY_COUNT), "all repos", palette),
+            metric_card(605, str(DISPLAY_STARRED_COUNT), "starred repos", palette),
             metric_card(790, str(stats["followers"]), "followers", palette),
-            metric_card(975, created_year, "on GitHub since", palette),
+            metric_card(975, str(DISPLAY_GITHUB_SINCE), "on GitHub since", palette),
         )
     )
 
@@ -275,9 +256,9 @@ def render_svg(
   <circle cx="58" cy="36" r="7" fill="#FEBC2E"/>
   <circle cx="82" cy="36" r="7" fill="#28C840"/>
   {text_node(108, 42, "$ ./whoami --profile --human", "titlebar")}
-  <rect x="1018" y="23" width="142" height="26" rx="13" fill="{palette.panel}" stroke="{palette.border}"/>
-  <circle cx="1037" cy="36" r="4.5" fill="{palette.success}"/>
-  {text_node(1050, 41, "OPEN TO BUILD", "eyebrow")}
+  <rect x="1010" y="23" width="170" height="26" rx="13" fill="{palette.panel}" stroke="{palette.border}"/>
+  <circle cx="1029" cy="36" r="4.5" fill="{palette.success}"/>
+  {text_node(1042, 41, "OPEN TO BUILD", "eyebrow")}
 
   <g clip-path="url(#portrait-clip)">
     <rect x="24" y="78" width="394" height="420" fill="{palette.panel_alt}"/>
@@ -290,13 +271,13 @@ def render_svg(
   {text_node(28, 548, "Product-minded engineering", "subhead")}
   {text_node(28, 572, "with an AI-native edge.", "subhead")}
 
-  {text_node(430, 104, "MUHAMMAD@GITHUB", "eyebrow")}
+  {text_node(430, 104, "AZEEM@GITHUB", "eyebrow")}
   {text_node(430, 137, "Muhammad Azeem Rao", "headline")}
   {text_node(1138, 137, "mrmuhammadazeemrao", "subhead", anchor="end")}
   <rect x="430" y="151" width="708" height="3" rx="1.5" fill="url(#accent-line)"/>
   {rows}
   {text_node(430, 470, "SYSTEM SIGNAL", "eyebrow")}
-  {text_node(1138, 470, "PUBLIC GITHUB DATA · AUTO-REFRESHED", "subhead", anchor="end")}
+  {text_node(1138, 470, "PROFILE SNAPSHOT · CURATED + AUTO-REFRESHED", "subhead", anchor="end")}
   {metric_cards}
 </svg>
 """

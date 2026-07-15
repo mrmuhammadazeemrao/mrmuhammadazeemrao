@@ -42,9 +42,9 @@
   <circle cx="58" cy="36" r="7" fill="#FEBC2E"/>
   <circle cx="82" cy="36" r="7" fill="#28C840"/>
   <text x="108" y="42" class="titlebar">$ ./whoami --profile --human</text>
-  <rect x="1018" y="23" width="142" height="26" rx="13" fill="#161B22" stroke="#30363D"/>
-  <circle cx="1037" cy="36" r="4.5" fill="#3FB950"/>
-  <text x="1050" y="41" class="eyebrow">OPEN TO BUILD</text>
+  <rect x="1010" y="23" width="170" height="26" rx="13" fill="#161B22" stroke="#30363D"/>
+  <circle cx="1029" cy="36" r="4.5" fill="#3FB950"/>
+  <text x="1042" y="41" class="eyebrow">OPEN TO BUILD</text>
 
   <g clip-path="url(#portrait-clip)">
     <rect x="24" y="78" width="394" height="420" fill="#111827"/>
@@ -1164,7 +1164,7 @@
   <text x="28" y="548" class="subhead">Product-minded engineering</text>
   <text x="28" y="572" class="subhead">with an AI-native edge.</text>
 
-  <text x="430" y="104" class="eyebrow">MUHAMMAD@GITHUB</text>
+  <text x="430" y="104" class="eyebrow">AZEEM@GITHUB</text>
   <text x="430" y="137" class="headline">Muhammad Azeem Rao</text>
   <text x="1138" y="137" class="subhead" text-anchor="end">mrmuhammadazeemrao</text>
   <rect x="430" y="151" width="708" height="3" rx="1.5" fill="url(#accent-line)"/>
@@ -1201,20 +1201,20 @@
 <rect x="574" y="404" width="570" height="29" class="value-backdrop"/>
 <text x="590" y="426" class="value">AWS · Azure · GCP · Docker · Kubernetes · CI/CD</text>
   <text x="430" y="470" class="eyebrow">SYSTEM SIGNAL</text>
-  <text x="1138" y="470" class="subhead" text-anchor="end">PUBLIC GITHUB DATA · AUTO-REFRESHED</text>
+  <text x="1138" y="470" class="subhead" text-anchor="end">PROFILE SNAPSHOT · CURATED + AUTO-REFRESHED</text>
   
     <g>
       <rect x="420" y="535" width="170" height="76" rx="14" class="metric-card"/>
       <rect x="420" y="535" width="5" height="76" rx="2.5" fill="#58A6FF"/>
-      <text x="440" y="568" class="metric-value">83</text>
-      <text x="440" y="592" class="metric-label">PUBLIC REPOS</text>
+      <text x="440" y="568" class="metric-value">105</text>
+      <text x="440" y="592" class="metric-label">ALL REPOS</text>
     </g>
 
     <g>
       <rect x="605" y="535" width="170" height="76" rx="14" class="metric-card"/>
       <rect x="605" y="535" width="5" height="76" rx="2.5" fill="#58A6FF"/>
-      <text x="625" y="568" class="metric-value">3</text>
-      <text x="625" y="592" class="metric-label">REPO STARS</text>
+      <text x="625" y="568" class="metric-value">30</text>
+      <text x="625" y="592" class="metric-label">STARRED REPOS</text>
     </g>
 
     <g>
@@ -1227,7 +1227,7 @@
     <g>
       <rect x="975" y="535" width="170" height="76" rx="14" class="metric-card"/>
       <rect x="975" y="535" width="5" height="76" rx="2.5" fill="#58A6FF"/>
-      <text x="995" y="568" class="metric-value">2019</text>
+      <text x="995" y="568" class="metric-value">2017</text>
       <text x="995" y="592" class="metric-label">ON GITHUB SINCE</text>
     </g>
 </svg>
