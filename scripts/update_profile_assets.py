@@ -17,9 +17,10 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS_DIR = ROOT / "assets"
-PORTRAIT_PATH = ASSETS_DIR / "profile-portrait.txt"
-PORTRAIT_TONES_PATH = ASSETS_DIR / "profile-portrait-tones.txt"
+PORTRAIT_BLOCKS_PATH = ASSETS_DIR / "profile-portrait-blocks.txt"
+PORTRAIT_COLORS_PATH = ASSETS_DIR / "profile-portrait-colors.txt"
 PORTRAIT_COLUMNS = 50
+PORTRAIT_ROWS = 40
 USERNAME = "mrmuhammadazeemrao"
 
 FALLBACK_STATS = {
@@ -155,21 +156,48 @@ def metric_card(x: int, value: str, label: str, palette: Palette) -> str:
     </g>"""
 
 
-def ascii_layer(lines: list[str], tone_lines: list[str]) -> str:
-    """Render a fixed-position ASCII halftone so the portrait stays aligned."""
+def portrait_color(raw_color: str, palette: Palette) -> str:
+    """Transform a source-photo color for legibility in the active theme."""
+    red = int(raw_color[0:2], 16)
+    green = int(raw_color[2:4], 16)
+    blue = int(raw_color[4:6], 16)
+    mean = (red + green + blue) / 3
+
+    red = int(mean + (red - mean) * 0.58)
+    green = int(mean + (green - mean) * 0.58)
+    blue = int(mean + (blue - mean) * 0.58)
+
+    if palette.name == "light":
+        scale = 0.86 if mean > 175 else 0.95
+        red = min(210, int(red * scale))
+        green = min(210, int(green * scale))
+        blue = min(210, int(blue * scale))
+    else:
+        red = min(235, 82 + int(red * 0.65))
+        green = min(235, 82 + int(green * 0.65))
+        blue = min(235, 82 + int(blue * 0.65))
+
+    return f"#{red:02X}{green:02X}{blue:02X}"
+
+
+def portrait_layer(
+    block_lines: list[str],
+    color_rows: list[list[str]],
+    palette: Palette,
+) -> str:
+    """Render high-detail terminal art from Unicode quadrant-block glyphs."""
     nodes: list[str] = []
-    for row, line in enumerate(lines):
-        characters = line.ljust(PORTRAIT_COLUMNS)
-        tones = tone_lines[row].ljust(PORTRAIT_COLUMNS)
-        for column, character in enumerate(characters[:PORTRAIT_COLUMNS]):
+    for row, line in enumerate(block_lines):
+        blocks = line.ljust(PORTRAIT_COLUMNS)
+        for column, character in enumerate(blocks[:PORTRAIT_COLUMNS]):
             if character == " ":
                 continue
-            tone = tones[column] if tones[column].isdigit() else "1"
             x = 28 + column * 7.65
-            y = 102 + row * 16.40
+            y = 76 + row * 10.25
+            color = portrait_color(color_rows[row][column], palette)
             nodes.append(
                 f'<text x="{x:.2f}" y="{y:.2f}" '
-                f'class="ascii portrait-tone-{tone}">{html.escape(character)}</text>'
+                f'class="portrait-cell" fill="{color}">{html.escape(character)}</text>'
             )
     return "\n".join(nodes)
 
@@ -177,8 +205,8 @@ def ascii_layer(lines: list[str], tone_lines: list[str]) -> str:
 def render_svg(
     palette: Palette,
     stats: dict[str, int | str],
-    portrait_lines: list[str],
-    portrait_tones: list[str],
+    portrait_blocks: list[str],
+    portrait_colors: list[list[str]],
 ) -> str:
     created_year = str(stats["created_at"])[:4]
     metric_cards = "\n".join(
@@ -206,7 +234,7 @@ def render_svg(
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-labelledby="title desc">
   <title id="title">Muhammad Azeem Rao engineering profile console</title>
-  <desc id="desc">A close-up ASCII halftone portrait beside a terminal-style summary of Muhammad Azeem Rao's product engineering, architecture, AI, full-stack, cloud, and leadership experience.</desc>
+  <desc id="desc">A close-up Unicode quadrant-block terminal portrait beside a summary of Muhammad Azeem Rao's product engineering, architecture, AI, full-stack, cloud, and leadership experience.</desc>
   <defs>
     <clipPath id="portrait-clip">
       <rect x="24" y="78" width="394" height="420" rx="22"/>
@@ -233,16 +261,7 @@ def render_svg(
     .subhead {{ font: 500 16px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; fill: {palette.muted}; }}
     .label {{ font: 700 15px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; fill: {palette.warm}; }}
     .value {{ font: 500 17px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; fill: {palette.text}; }}
-    .ascii {{ font: 600 13.2px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; fill: {palette.text}; }}
-    .portrait-tone-1 {{ opacity: 0.30; }}
-    .portrait-tone-2 {{ opacity: 0.38; }}
-    .portrait-tone-3 {{ opacity: 0.46; }}
-    .portrait-tone-4 {{ opacity: 0.55; }}
-    .portrait-tone-5 {{ opacity: 0.64; }}
-    .portrait-tone-6 {{ opacity: 0.73; }}
-    .portrait-tone-7 {{ opacity: 0.82; }}
-    .portrait-tone-8 {{ opacity: 0.91; }}
-    .portrait-tone-9 {{ opacity: 1; }}
+    .portrait-cell {{ font: 400 11px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }}
     .metric-value {{ font: 800 26px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; fill: {palette.text}; }}
     .metric-label {{ font: 700 11px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; letter-spacing: 1px; fill: {palette.muted}; }}
     .leader {{ stroke: {palette.border}; stroke-width: 1; stroke-dasharray: 2 5; }}
@@ -263,7 +282,7 @@ def render_svg(
   <g clip-path="url(#portrait-clip)">
     <rect x="24" y="78" width="394" height="420" fill="{palette.panel_alt}"/>
     <rect x="24" y="78" width="394" height="420" fill="url(#portrait-glow)"/>
-    {ascii_layer(portrait_lines, portrait_tones)}
+    {portrait_layer(portrait_blocks, portrait_colors, palette)}
   </g>
   <rect x="24" y="78" width="394" height="420" rx="22" fill="none" stroke="{palette.border}" stroke-width="2"/>
   <path d="M38 106 V92 H52 M390 92 H404 V106 M38 470 V484 H52 M390 484 H404 V470" fill="none" stroke="{palette.accent}" stroke-width="3"/>
@@ -299,7 +318,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    required_portrait_files = [PORTRAIT_PATH, PORTRAIT_TONES_PATH]
+    required_portrait_files = [PORTRAIT_BLOCKS_PATH, PORTRAIT_COLORS_PATH]
     missing = [path for path in required_portrait_files if not path.exists()]
     if missing:
         print(
@@ -309,18 +328,39 @@ def main() -> int:
         return 1
 
     stats = FALLBACK_STATS if args.offline else fetch_stats()
-    portrait_lines = PORTRAIT_PATH.read_text(encoding="utf-8").splitlines()
-    portrait_tones = PORTRAIT_TONES_PATH.read_text(encoding="utf-8").splitlines()
-    if len(portrait_lines) != len(portrait_tones):
-        print("Portrait characters and tones must have the same row count", file=sys.stderr)
+    portrait_blocks = PORTRAIT_BLOCKS_PATH.read_text(encoding="utf-8").splitlines()
+    portrait_colors = [
+        line.split()
+        for line in PORTRAIT_COLORS_PATH.read_text(encoding="utf-8").splitlines()
+    ]
+    if len(portrait_blocks) != PORTRAIT_ROWS or len(portrait_colors) != PORTRAIT_ROWS:
+        print(f"Portrait data must contain {PORTRAIT_ROWS} rows", file=sys.stderr)
         return 1
+    if any(len(line) > PORTRAIT_COLUMNS for line in portrait_blocks):
+        print(f"Portrait rows cannot exceed {PORTRAIT_COLUMNS} columns", file=sys.stderr)
+        return 1
+    if any(len(row) != PORTRAIT_COLUMNS for row in portrait_colors):
+        print(f"Portrait color rows must contain {PORTRAIT_COLUMNS} values", file=sys.stderr)
+        return 1
+    for row, line in enumerate(portrait_blocks):
+        for column, character in enumerate(line.ljust(PORTRAIT_COLUMNS)):
+            raw_color = portrait_colors[row][column]
+            if character != " ":
+                try:
+                    int(raw_color, 16)
+                except ValueError:
+                    print(
+                        f"Invalid portrait color at row {row + 1}, column {column + 1}",
+                        file=sys.stderr,
+                    )
+                    return 1
 
     changed: list[str] = []
     for palette in PALETTES:
         output = ASSETS_DIR / f"profile-console-{palette.name}.svg"
         if save_if_changed(
             output,
-            render_svg(palette, stats, portrait_lines, portrait_tones),
+            render_svg(palette, stats, portrait_blocks, portrait_colors),
         ):
             changed.append(output.relative_to(ROOT).as_posix())
 
