@@ -17,11 +17,9 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS_DIR = ROOT / "assets"
-PORTRAIT_PATHS = {
-    "light": ASSETS_DIR / "profile-portrait-light.txt",
-    "dark": ASSETS_DIR / "profile-portrait-dark.txt",
-}
-PORTRAIT_EDGE_PATH = ASSETS_DIR / "profile-portrait-edge.txt"
+PORTRAIT_PATH = ASSETS_DIR / "profile-portrait.txt"
+PORTRAIT_TONES_PATH = ASSETS_DIR / "profile-portrait-tones.txt"
+PORTRAIT_COLUMNS = 50
 USERNAME = "mrmuhammadazeemrao"
 
 FALLBACK_STATS = {
@@ -157,21 +155,30 @@ def metric_card(x: int, value: str, label: str, palette: Palette) -> str:
     </g>"""
 
 
-def ascii_layer(lines: list[str], css_class: str) -> str:
-    return "\n".join(
-        (
-            f'<text x="48" y="{101 + index * 9.45:.2f}" class="{css_class}" '
-            f'xml:space="preserve">{html.escape(line)}</text>'
-        )
-        for index, line in enumerate(lines)
-    )
+def ascii_layer(lines: list[str], tone_lines: list[str]) -> str:
+    """Render a fixed-position ASCII halftone so the portrait stays aligned."""
+    nodes: list[str] = []
+    for row, line in enumerate(lines):
+        characters = line.ljust(PORTRAIT_COLUMNS)
+        tones = tone_lines[row].ljust(PORTRAIT_COLUMNS)
+        for column, character in enumerate(characters[:PORTRAIT_COLUMNS]):
+            if character == " ":
+                continue
+            tone = tones[column] if tones[column].isdigit() else "1"
+            x = 28 + column * 7.65
+            y = 102 + row * 16.40
+            nodes.append(
+                f'<text x="{x:.2f}" y="{y:.2f}" '
+                f'class="ascii portrait-tone-{tone}">{html.escape(character)}</text>'
+            )
+    return "\n".join(nodes)
 
 
 def render_svg(
     palette: Palette,
     stats: dict[str, int | str],
     portrait_lines: list[str],
-    edge_lines: list[str],
+    portrait_tones: list[str],
 ) -> str:
     created_year = str(stats["created_at"])[:4]
     metric_cards = "\n".join(
@@ -199,10 +206,10 @@ def render_svg(
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-labelledby="title desc">
   <title id="title">Muhammad Azeem Rao engineering profile console</title>
-  <desc id="desc">A terminal-style summary of Muhammad Azeem Rao's product engineering, architecture, AI, full-stack, cloud, and leadership experience.</desc>
+  <desc id="desc">A close-up ASCII halftone portrait beside a terminal-style summary of Muhammad Azeem Rao's product engineering, architecture, AI, full-stack, cloud, and leadership experience.</desc>
   <defs>
     <clipPath id="portrait-clip">
-      <rect x="38" y="84" width="330" height="408" rx="22"/>
+      <rect x="24" y="78" width="394" height="420" rx="22"/>
     </clipPath>
     <linearGradient id="accent-line" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0" stop-color="{palette.accent}"/>
@@ -214,9 +221,6 @@ def render_svg(
       <stop offset="0.72" stop-color="{palette.secondary}" stop-opacity="0.04"/>
       <stop offset="1" stop-color="{palette.panel_alt}" stop-opacity="0"/>
     </radialGradient>
-    <pattern id="portrait-grid" width="16" height="16" patternUnits="userSpaceOnUse">
-      <path d="M16 0H0V16" fill="none" stroke="{palette.border}" stroke-opacity="0.32" stroke-width="0.7"/>
-    </pattern>
     <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
       <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.16"/>
     </filter>
@@ -229,8 +233,16 @@ def render_svg(
     .subhead {{ font: 500 16px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; fill: {palette.muted}; }}
     .label {{ font: 700 15px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; fill: {palette.warm}; }}
     .value {{ font: 500 17px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; fill: {palette.text}; }}
-    .ascii {{ font: 600 9.4px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; fill: {palette.text}; opacity: 0.88; }}
-    .ascii-edge {{ font: 700 9.4px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; fill: {palette.accent}; opacity: 0.55; }}
+    .ascii {{ font: 600 13.2px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; fill: {palette.text}; }}
+    .portrait-tone-1 {{ opacity: 0.30; }}
+    .portrait-tone-2 {{ opacity: 0.38; }}
+    .portrait-tone-3 {{ opacity: 0.46; }}
+    .portrait-tone-4 {{ opacity: 0.55; }}
+    .portrait-tone-5 {{ opacity: 0.64; }}
+    .portrait-tone-6 {{ opacity: 0.73; }}
+    .portrait-tone-7 {{ opacity: 0.82; }}
+    .portrait-tone-8 {{ opacity: 0.91; }}
+    .portrait-tone-9 {{ opacity: 1; }}
     .metric-value {{ font: 800 26px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; fill: {palette.text}; }}
     .metric-label {{ font: 700 11px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; letter-spacing: 1px; fill: {palette.muted}; }}
     .leader {{ stroke: {palette.border}; stroke-width: 1; stroke-dasharray: 2 5; }}
@@ -249,17 +261,15 @@ def render_svg(
   {text_node(1050, 41, "OPEN TO BUILD", "eyebrow")}
 
   <g clip-path="url(#portrait-clip)">
-    <rect x="38" y="84" width="330" height="408" fill="{palette.panel_alt}"/>
-    <rect x="38" y="84" width="330" height="408" fill="url(#portrait-glow)"/>
-    <rect x="38" y="84" width="330" height="408" fill="url(#portrait-grid)"/>
-    {ascii_layer(portrait_lines, "ascii")}
-    {ascii_layer(edge_lines, "ascii-edge")}
+    <rect x="24" y="78" width="394" height="420" fill="{palette.panel_alt}"/>
+    <rect x="24" y="78" width="394" height="420" fill="url(#portrait-glow)"/>
+    {ascii_layer(portrait_lines, portrait_tones)}
   </g>
-  <rect x="38" y="84" width="330" height="408" rx="22" fill="none" stroke="{palette.border}" stroke-width="2"/>
-  <path d="M52 112 V98 H66 M340 98 H354 V112 M52 464 V478 H66 M340 478 H354 V464" fill="none" stroke="{palette.accent}" stroke-width="3"/>
-  {text_node(42, 520, "ARCHITECT → BUILD → LEAD", "eyebrow")}
-  {text_node(42, 548, "Product-minded engineering", "subhead")}
-  {text_node(42, 572, "with an AI-native edge.", "subhead")}
+  <rect x="24" y="78" width="394" height="420" rx="22" fill="none" stroke="{palette.border}" stroke-width="2"/>
+  <path d="M38 106 V92 H52 M390 92 H404 V106 M38 470 V484 H52 M390 484 H404 V470" fill="none" stroke="{palette.accent}" stroke-width="3"/>
+  {text_node(28, 520, "ARCHITECT → BUILD → LEAD", "eyebrow")}
+  {text_node(28, 548, "Product-minded engineering", "subhead")}
+  {text_node(28, 572, "with an AI-native edge.", "subhead")}
 
   {text_node(430, 104, "MUHAMMAD@GITHUB", "eyebrow")}
   {text_node(430, 137, "Muhammad Azeem Rao", "headline")}
@@ -289,7 +299,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    required_portrait_files = [*PORTRAIT_PATHS.values(), PORTRAIT_EDGE_PATH]
+    required_portrait_files = [PORTRAIT_PATH, PORTRAIT_TONES_PATH]
     missing = [path for path in required_portrait_files if not path.exists()]
     if missing:
         print(
@@ -299,18 +309,18 @@ def main() -> int:
         return 1
 
     stats = FALLBACK_STATS if args.offline else fetch_stats()
-    portraits = {
-        theme: path.read_text(encoding="utf-8").splitlines()
-        for theme, path in PORTRAIT_PATHS.items()
-    }
-    edge_lines = PORTRAIT_EDGE_PATH.read_text(encoding="utf-8").splitlines()
+    portrait_lines = PORTRAIT_PATH.read_text(encoding="utf-8").splitlines()
+    portrait_tones = PORTRAIT_TONES_PATH.read_text(encoding="utf-8").splitlines()
+    if len(portrait_lines) != len(portrait_tones):
+        print("Portrait characters and tones must have the same row count", file=sys.stderr)
+        return 1
 
     changed: list[str] = []
     for palette in PALETTES:
         output = ASSETS_DIR / f"profile-console-{palette.name}.svg"
         if save_if_changed(
             output,
-            render_svg(palette, stats, portraits[palette.name], edge_lines),
+            render_svg(palette, stats, portrait_lines, portrait_tones),
         ):
             changed.append(output.relative_to(ROOT).as_posix())
 
