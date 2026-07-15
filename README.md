@@ -62,6 +62,12 @@ Understand the outcome → make trade-offs explicit → design the smallest soun
 - **AI needs evidence:** agentic systems deserve evals, guardrails, traces, and human control—not just impressive demos.
 - **Leadership is leverage:** clear decisions, useful feedback, and strong engineers compound over time.
 
+<p align="center">
+  <img src="./assets/code-eat-sleep-repeat.gif" alt="Eat, sleep, code, repeat animation" width="230">
+  <br>
+  <sub><code>eat(); sleep(); code(); repeat();</code></sub>
+</p>
+
 ## Current focus
 
 - Building production-grade AI agents and LLM-powered product workflows.

@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import base64
 import html
 import json
 import os
@@ -18,7 +17,11 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS_DIR = ROOT / "assets"
-PHOTO_PATH = ASSETS_DIR / "profile-photo.jpg"
+PORTRAIT_PATHS = {
+    "light": ASSETS_DIR / "profile-portrait-light.txt",
+    "dark": ASSETS_DIR / "profile-portrait-dark.txt",
+}
+PORTRAIT_EDGE_PATH = ASSETS_DIR / "profile-portrait-edge.txt"
 USERNAME = "mrmuhammadazeemrao"
 
 FALLBACK_STATS = {
@@ -44,7 +47,6 @@ class Palette:
     secondary: str
     success: str
     warm: str
-    photo_overlay: str
 
 
 PALETTES = (
@@ -60,7 +62,6 @@ PALETTES = (
         secondary="#8250DF",
         success="#1A7F37",
         warm="#BC4C00",
-        photo_overlay="#111827",
     ),
     Palette(
         name="dark",
@@ -74,7 +75,6 @@ PALETTES = (
         secondary="#A371F7",
         success="#3FB950",
         warm="#F0883E",
-        photo_overlay="#05080D",
     ),
 )
 
@@ -157,7 +157,22 @@ def metric_card(x: int, value: str, label: str, palette: Palette) -> str:
     </g>"""
 
 
-def render_svg(palette: Palette, stats: dict[str, int | str], photo_data: str) -> str:
+def ascii_layer(lines: list[str], css_class: str) -> str:
+    return "\n".join(
+        (
+            f'<text x="48" y="{101 + index * 9.45:.2f}" class="{css_class}" '
+            f'xml:space="preserve">{html.escape(line)}</text>'
+        )
+        for index, line in enumerate(lines)
+    )
+
+
+def render_svg(
+    palette: Palette,
+    stats: dict[str, int | str],
+    portrait_lines: list[str],
+    edge_lines: list[str],
+) -> str:
     created_year = str(stats["created_at"])[:4]
     metric_cards = "\n".join(
         (
@@ -186,20 +201,21 @@ def render_svg(palette: Palette, stats: dict[str, int | str], photo_data: str) -
   <title id="title">Muhammad Azeem Rao engineering profile console</title>
   <desc id="desc">A terminal-style summary of Muhammad Azeem Rao's product engineering, architecture, AI, full-stack, cloud, and leadership experience.</desc>
   <defs>
-    <clipPath id="photo-clip">
+    <clipPath id="portrait-clip">
       <rect x="38" y="84" width="330" height="408" rx="22"/>
     </clipPath>
-    <linearGradient id="photo-fade" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="48%" stop-color="{palette.photo_overlay}" stop-opacity="0"/>
-      <stop offset="100%" stop-color="{palette.photo_overlay}" stop-opacity="0.82"/>
-    </linearGradient>
     <linearGradient id="accent-line" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0" stop-color="{palette.accent}"/>
       <stop offset="0.55" stop-color="{palette.secondary}"/>
       <stop offset="1" stop-color="{palette.success}"/>
     </linearGradient>
-    <pattern id="scanlines" width="6" height="6" patternUnits="userSpaceOnUse">
-      <path d="M0 5.5 H6" stroke="{palette.background}" stroke-opacity="0.16"/>
+    <radialGradient id="portrait-glow" cx="50%" cy="38%" r="64%">
+      <stop offset="0" stop-color="{palette.accent}" stop-opacity="0.14"/>
+      <stop offset="0.72" stop-color="{palette.secondary}" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="{palette.panel_alt}" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="portrait-grid" width="16" height="16" patternUnits="userSpaceOnUse">
+      <path d="M16 0H0V16" fill="none" stroke="{palette.border}" stroke-opacity="0.32" stroke-width="0.7"/>
     </pattern>
     <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
       <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.16"/>
@@ -213,8 +229,8 @@ def render_svg(palette: Palette, stats: dict[str, int | str], photo_data: str) -
     .subhead {{ font: 500 16px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; fill: {palette.muted}; }}
     .label {{ font: 700 15px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; fill: {palette.warm}; }}
     .value {{ font: 500 17px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; fill: {palette.text}; }}
-    .photo-mark {{ font: 800 31px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; letter-spacing: 1px; fill: #FFFFFF; }}
-    .photo-caption {{ font: 600 14px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; letter-spacing: 1.4px; fill: #D8DEE9; }}
+    .ascii {{ font: 600 9.4px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; fill: {palette.text}; opacity: 0.88; }}
+    .ascii-edge {{ font: 700 9.4px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; fill: {palette.accent}; opacity: 0.55; }}
     .metric-value {{ font: 800 26px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; fill: {palette.text}; }}
     .metric-label {{ font: 700 11px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; letter-spacing: 1px; fill: {palette.muted}; }}
     .leader {{ stroke: {palette.border}; stroke-width: 1; stroke-dasharray: 2 5; }}
@@ -232,16 +248,15 @@ def render_svg(palette: Palette, stats: dict[str, int | str], photo_data: str) -
   <circle cx="1037" cy="36" r="4.5" fill="{palette.success}"/>
   {text_node(1050, 41, "OPEN TO BUILD", "eyebrow")}
 
-  <g clip-path="url(#photo-clip)">
+  <g clip-path="url(#portrait-clip)">
     <rect x="38" y="84" width="330" height="408" fill="{palette.panel_alt}"/>
-    <image x="38" y="84" width="330" height="408" preserveAspectRatio="xMidYMid slice" href="data:image/jpeg;base64,{photo_data}"/>
-    <rect x="38" y="84" width="330" height="408" fill="url(#photo-fade)"/>
-    <rect x="38" y="84" width="330" height="408" fill="url(#scanlines)" opacity="0.55"/>
+    <rect x="38" y="84" width="330" height="408" fill="url(#portrait-glow)"/>
+    <rect x="38" y="84" width="330" height="408" fill="url(#portrait-grid)"/>
+    {ascii_layer(portrait_lines, "ascii")}
+    {ascii_layer(edge_lines, "ascii-edge")}
   </g>
   <rect x="38" y="84" width="330" height="408" rx="22" fill="none" stroke="{palette.border}" stroke-width="2"/>
   <path d="M52 112 V98 H66 M340 98 H354 V112 M52 464 V478 H66 M340 478 H354 V464" fill="none" stroke="{palette.accent}" stroke-width="3"/>
-  {text_node(58, 446, "MAR //", "photo-mark")}
-  {text_node(58, 470, "PRAGMATIC.DEV · HE/HIM", "photo-caption")}
   {text_node(42, 520, "ARCHITECT → BUILD → LEAD", "eyebrow")}
   {text_node(42, 548, "Product-minded engineering", "subhead")}
   {text_node(42, 572, "with an AI-native edge.", "subhead")}
@@ -274,17 +289,29 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    if not PHOTO_PATH.exists():
-        print(f"Missing profile photo: {PHOTO_PATH}", file=sys.stderr)
+    required_portrait_files = [*PORTRAIT_PATHS.values(), PORTRAIT_EDGE_PATH]
+    missing = [path for path in required_portrait_files if not path.exists()]
+    if missing:
+        print(
+            "Missing profile portrait data: " + ", ".join(str(path) for path in missing),
+            file=sys.stderr,
+        )
         return 1
 
     stats = FALLBACK_STATS if args.offline else fetch_stats()
-    photo_data = base64.b64encode(PHOTO_PATH.read_bytes()).decode("ascii")
+    portraits = {
+        theme: path.read_text(encoding="utf-8").splitlines()
+        for theme, path in PORTRAIT_PATHS.items()
+    }
+    edge_lines = PORTRAIT_EDGE_PATH.read_text(encoding="utf-8").splitlines()
 
     changed: list[str] = []
     for palette in PALETTES:
         output = ASSETS_DIR / f"profile-console-{palette.name}.svg"
-        if save_if_changed(output, render_svg(palette, stats, photo_data)):
+        if save_if_changed(
+            output,
+            render_svg(palette, stats, portraits[palette.name], edge_lines),
+        ):
             changed.append(output.relative_to(ROOT).as_posix())
 
     if changed:
