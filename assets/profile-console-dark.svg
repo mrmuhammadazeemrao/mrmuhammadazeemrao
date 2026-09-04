@@ -1220,7 +1220,7 @@
     <g>
       <rect x="790" y="535" width="170" height="76" rx="14" class="metric-card"/>
       <rect x="790" y="535" width="5" height="76" rx="2.5" fill="#58A6FF"/>
-      <text x="810" y="568" class="metric-value">4</text>
+      <text x="810" y="568" class="metric-value">5</text>
       <text x="810" y="592" class="metric-label">FOLLOWERS</text>
     </g>
 
